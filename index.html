@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aeroparaguana C.A | Pasajes y Servicios Aereos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="logo" href="#">
+                <span class="logo-aero">Aero</span><span class="logo-para">paraguana</span>
+                <small>C.A</small>
+            </a>
+            <nav class="menu">
+                <a href="#pasajes">Vuelos</a>
+                <a href="#servicios">Servicios</a>
+                <a href="#pagos">Portal de pagos</a>
+                <a href="#contacto">Contacto</a>
+            </nav>
+            <div class="top-actions">
+                <button class="login-btn" type="button">Iniciar sesion</button>
+                <button id="toggle-edit" class="edit-btn" type="button">Editar textos: OFF</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section id="pasajes" class="booking-hero">
+            <div class="banner">
+                <img class="banner-slide active" src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1800&q=80" alt="Avion comercial en pista">
+                <img class="banner-slide" src="https://images.unsplash.com/photo-1517479149777-5f3b1511d5ad?auto=format&fit=crop&w=1800&q=80" alt="Avion despegando">
+                <img class="banner-slide" src="https://images.unsplash.com/photo-1542296332-2e4473faf563?auto=format&fit=crop&w=1800&q=80" alt="Avion aterrizando">
+                <div class="banner-overlay"></div>
+                <div class="banner-copy">
+                    <p class="banner-kicker editable-text" data-key="heroTag">Vuelos nacionales e internacionales desde Paraguana</p>
+                    <h1 class="editable-text" data-key="heroTitle">Reserva tus boletos con Aeroparaguana C.A</h1>
+                    <p class="editable-text" data-key="heroDesc">Rutas activas: Las Piedras - Caracas y Las Piedras - Curazao, ida y vuelta.</p>
+                </div>
+                <div class="banner-dots">
+                    <button class="dot active" data-slide="0" type="button" aria-label="Slide 1"></button>
+                    <button class="dot" data-slide="1" type="button" aria-label="Slide 2"></button>
+                    <button class="dot" data-slide="2" type="button" aria-label="Slide 3"></button>
+                </div>
+            </div>
+
+            <section class="booking-card">
+                <div class="booking-tabs">
+                    <button class="tab active" type="button">Vuelos</button>
+                    <button class="tab" type="button" disabled>Check-in</button>
+                    <button class="tab" type="button" disabled>Estado de vuelo</button>
+                </div>
+
+                <form id="booking-form" class="booking-form">
+                    <div class="trip-type">
+                        <label><input type="radio" name="trip-type" value="oneway" checked> Solo ida</label>
+                        <label><input type="radio" name="trip-type" value="roundtrip"> Ida y vuelta</label>
+                    </div>
+
+                    <label>
+                        Origen
+                        <select id="booking-origin" required>
+                            <option value="">Selecciona origen</option>
+                        </select>
+                    </label>
+                    <label>
+                        Destino
+                        <select id="booking-destination" required>
+                            <option value="">Selecciona destino</option>
+                        </select>
+                    </label>
+                    <label>
+                        Fecha de ida
+                        <input type="date" id="booking-depart" required>
+                    </label>
+                    <label>
+                        Fecha de vuelta
+                        <input type="date" id="booking-return" disabled>
+                    </label>
+                    <label>
+                        Pasajeros
+                        <select id="booking-passengers" required>
+                            <option value="1">1 pasajero</option>
+                            <option value="2">2 pasajeros</option>
+                            <option value="3">3 pasajeros</option>
+                            <option value="4">4 pasajeros</option>
+                            <option value="5">5 pasajeros</option>
+                        </select>
+                    </label>
+                    <label>
+                        Moneda
+                        <select id="booking-currency" required>
+                            <option value="USD">USD - Dolares</option>
+                            <option value="VES">VES - Bolivares</option>
+                            <option value="CLP">CLP - Pesos chilenos</option>
+                        </select>
+                    </label>
+                    <button class="search-btn" type="submit">Buscar y comprar</button>
+                </form>
+
+                <div id="booking-summary" class="booking-summary"></div>
+            </section>
+        </section>
+
+        <section id="servicios" class="section">
+            <div class="section-head">
+                <h2>Servicios de handling y FBO</h2>
+                <p>Atencion operativa para aviacion corporativa en Venezuela.</p>
+            </div>
+            <div class="services-grid" id="services-grid"></div>
+        </section>
+
+        <section id="pagos" class="section">
+            <div class="section-head">
+                <h2>Portal de pagos</h2>
+                <p>Paga servicios en USD, VES o CLP.</p>
+            </div>
+            <form id="payment-form" class="payment-form">
+                <label>
+                    Nombre o empresa
+                    <input type="text" id="payer-name" placeholder="Ej: Jet Logistic Group" required>
+                </label>
+                <label>
+                    Servicio
+                    <select id="service-select" required></select>
+                </label>
+                <label>
+                    Monto
+                    <input type="number" id="amount" min="1" step="0.01" required>
+                </label>
+                <label>
+                    Moneda
+                    <select id="currency" required>
+                        <option value="USD">USD - Dolares</option>
+                        <option value="VES">VES - Bolivares</option>
+                        <option value="CLP">CLP - Pesos chilenos</option>
+                    </select>
+                </label>
+                <button class="pay-btn" type="submit">Procesar pago</button>
+            </form>
+            <div id="payment-summary" class="payment-summary"></div>
+        </section>
+
+        <section id="contacto" class="section">
+            <div class="section-head">
+                <h2>Contacto operativo</h2>
+            </div>
+            <p class="contact editable-text" data-key="contactInfo">Email: ops@aeroparaguana.com | Telefono: +58 424-000-0000</p>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

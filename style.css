@@ -1,0 +1,400 @@
+:root {
+    --bg: #f2f5fb;
+    --text: #112743;
+    --muted: #5f7592;
+    --brand: #0d7db3;
+    --brand-2: #0f3d8f;
+    --accent: #ee3f56;
+    --card: #ffffff;
+    --line: #d8e2f0;
+    --font-main: "Manrope", sans-serif;
+    --font-title: "Sora", sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-main);
+}
+
+.topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.topbar-inner {
+    width: min(1200px, 94vw);
+    margin-inline: auto;
+    min-height: 82px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.logo {
+    text-decoration: none;
+    display: flex;
+    align-items: baseline;
+    gap: 0.15rem;
+}
+
+.logo-aero {
+    color: #d62544;
+    font-size: 2rem;
+    font-style: italic;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.logo-para {
+    color: #1c4b85;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.logo small {
+    color: #1c4b85;
+    font-weight: 700;
+    margin-left: 0.2rem;
+}
+
+.menu {
+    display: flex;
+    gap: 1.1rem;
+}
+
+.menu a {
+    text-decoration: none;
+    color: #20456f;
+    font-weight: 700;
+    font-size: 0.96rem;
+}
+
+.top-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.login-btn,
+.edit-btn {
+    border: none;
+    border-radius: 999px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.login-btn {
+    background: #1a3f73;
+    color: #fff;
+    padding: 0.65rem 1rem;
+}
+
+.edit-btn {
+    background: #e8effa;
+    color: #214a7f;
+    padding: 0.65rem 0.9rem;
+}
+
+main {
+    padding-bottom: 2rem;
+}
+
+.booking-hero,
+.section {
+    width: min(1200px, 94vw);
+    margin-inline: auto;
+}
+
+.booking-hero {
+    margin-top: 1.2rem;
+}
+
+.banner {
+    position: relative;
+    min-height: 360px;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid #c9d8ea;
+    box-shadow: 0 10px 30px rgba(22, 62, 109, 0.14);
+}
+
+.banner-slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+}
+
+.banner-slide.active {
+    opacity: 1;
+}
+
+.banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, rgba(8, 39, 80, 0.8), rgba(8, 39, 80, 0.25));
+}
+
+.banner-copy {
+    position: absolute;
+    z-index: 2;
+    left: clamp(1rem, 3vw, 2.2rem);
+    top: clamp(1.2rem, 3vw, 2rem);
+    max-width: 700px;
+    color: #fff;
+}
+
+.banner-kicker {
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    text-transform: uppercase;
+    opacity: 0.95;
+    margin-bottom: 0.65rem;
+}
+
+.banner-copy h1 {
+    font-family: var(--font-title);
+    font-size: clamp(1.8rem, 4vw, 2.7rem);
+    margin-bottom: 0.7rem;
+}
+
+.banner-copy p {
+    max-width: 60ch;
+    line-height: 1.35;
+}
+
+.banner-dots {
+    position: absolute;
+    z-index: 3;
+    left: 1.2rem;
+    bottom: 1rem;
+    display: flex;
+    gap: 0.45rem;
+}
+
+.dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.dot.active {
+    background: #fff;
+}
+
+.booking-card {
+    margin-top: -46px;
+    position: relative;
+    z-index: 10;
+    background: var(--card);
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    box-shadow: 0 12px 34px rgba(16, 54, 97, 0.15);
+    padding: 1rem;
+}
+
+.booking-tabs {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+}
+
+.tab {
+    border: none;
+    border-radius: 11px;
+    background: #eaf1f7;
+    color: #6c8098;
+    font: inherit;
+    font-weight: 700;
+    padding: 0.72rem 0.9rem;
+}
+
+.tab.active {
+    background: #0aa3cc;
+    color: #fff;
+}
+
+.booking-form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.trip-type {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 1rem;
+    font-weight: 700;
+}
+
+.booking-form label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 700;
+    color: #375778;
+}
+
+.booking-form input,
+.booking-form select,
+.payment-form input,
+.payment-form select {
+    background: #fff;
+    border: 1px solid #c4d4e8;
+    border-radius: 11px;
+    padding: 0.7rem;
+    color: var(--text);
+    font: inherit;
+}
+
+.search-btn,
+.pay-btn {
+    border: none;
+    border-radius: 11px;
+    background: linear-gradient(90deg, #e55263, #d92f47);
+    color: #fff;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    padding: 0.77rem 0.9rem;
+    align-self: end;
+}
+
+.booking-summary,
+.payment-summary {
+    margin-top: 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #f8fbff;
+    color: #315578;
+    padding: 0.8rem;
+    min-height: 52px;
+}
+
+.section {
+    margin-top: 1.1rem;
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    padding: 1.2rem;
+}
+
+.section-head {
+    margin-bottom: 0.85rem;
+}
+
+.section-head h2 {
+    font-family: var(--font-title);
+    font-size: 1.4rem;
+    color: #1e446f;
+}
+
+.section-head p {
+    color: var(--muted);
+    margin-top: 0.25rem;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.7rem;
+}
+
+.service-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.9rem;
+    background: #f8fbff;
+}
+
+.service-card p {
+    color: var(--muted);
+    margin: 0.4rem 0;
+}
+
+.service-price {
+    color: var(--brand-2);
+    font-weight: 800;
+}
+
+.payment-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.payment-form label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 700;
+    color: #375778;
+}
+
+.contact {
+    color: var(--muted);
+}
+
+.editable {
+    outline: 2px dashed #27ace7;
+    outline-offset: 3px;
+}
+
+@media (max-width: 980px) {
+    .menu {
+        display: none;
+    }
+
+    .booking-form {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+    }
+}
+
+@media (max-width: 680px) {
+    .topbar-inner {
+        min-height: 74px;
+    }
+
+    .logo-aero,
+    .logo-para {
+        font-size: 1.5rem;
+    }
+
+    .top-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .banner {
+        min-height: 300px;
+    }
+
+    .banner-copy {
+        max-width: 90%;
+    }
+
+    .booking-card {
+        margin-top: -28px;
+    }
+
+    .booking-form {
+        grid-template-columns: 1fr;
+    }
+}
