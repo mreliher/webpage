@@ -398,17 +398,17 @@ main {
 .gateway-grid,
 .checkout-gateway-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 0.95rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1.1rem;
 }
 
 .gateway-card,
 .checkout-gateway {
     border: 1px solid var(--line);
-    border-radius: 12px;
-    background: #f8fbff;
-    padding: 0.95rem;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #fbfdff, #f3f8ff);
+    padding: 1.1rem;
 }
 
 .gateway-card h3,
@@ -426,22 +426,24 @@ main {
 .checkout-gateway {
     cursor: pointer;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    min-height: 170px;
 }
 
 .checkout-gateway.active {
     border-color: #1e7fd1;
-    box-shadow: 0 10px 24px rgba(30, 127, 209, 0.14);
-    transform: translateY(-1px);
+    box-shadow: 0 16px 34px rgba(30, 127, 209, 0.17);
+    transform: translateY(-2px);
+    background: linear-gradient(180deg, #ffffff, #eef6ff);
 }
 
 .checkout-booking-info {
     border: 1px solid var(--line);
-    border-radius: 12px;
-    background: #f8fbff;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #fbfdff, #f3f8ff);
     color: var(--muted);
     line-height: 1.6;
-    padding: 0.9rem;
-    margin-bottom: 0.95rem;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
 }
 
 .checkout-actions {
@@ -450,7 +452,69 @@ main {
 }
 
 .checkout-panel {
-    width: min(760px, calc(100vw - 2rem));
+    width: min(980px, calc(100vw - 2rem));
+}
+
+.checkout-gateway-head {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-bottom: 0.7rem;
+}
+
+.gateway-badge {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 900;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+    box-shadow: 0 10px 24px rgba(17, 39, 67, 0.14);
+}
+
+.brand-stripe {
+    background: linear-gradient(135deg, #625afa, #4a39de);
+}
+
+.brand-paypal {
+    background: linear-gradient(135deg, #003087, #009cde);
+}
+
+.brand-ach {
+    background: linear-gradient(135deg, #0d5f42, #18a06e);
+}
+
+.brand-webpay {
+    background: linear-gradient(135deg, #cf1238, #8f0d3f);
+}
+
+.brand-mercantil {
+    background: linear-gradient(135deg, #ea6a00, #0056b8);
+}
+
+.brand-banesco {
+    background: linear-gradient(135deg, #004a98, #d71920);
+}
+
+.checkout-gateway-copy {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.checkout-gateway-meta {
+    color: #5e7898;
+    font-weight: 800;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.checkout-gateway p {
+    font-size: 1rem;
+    max-width: 30ch;
 }
 
 .payment-form {
@@ -601,5 +665,9 @@ main {
 
     .auth-actions {
         grid-template-columns: 1fr;
+    }
+
+    .checkout-panel {
+        width: min(94vw, calc(100vw - 1rem));
     }
 }

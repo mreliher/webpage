@@ -65,19 +65,28 @@ const PAYMENT_GATEWAYS = {
             id: "stripe_card",
             provider: "stripe",
             label: "Stripe Checkout",
-            description: "Tarjetas internacionales y checkout web en dolares."
+            description: "Tarjetas internacionales y checkout web en dolares.",
+            badge: "S",
+            brandClass: "brand-stripe",
+            meta: "Visa, Mastercard, AMEX"
         },
         {
             id: "paypal",
             provider: "paypal",
             label: "PayPal",
-            description: "Pago con cuenta PayPal o tarjetas segun disponibilidad del pais."
+            description: "Pago con cuenta PayPal o tarjetas segun disponibilidad del pais.",
+            badge: "P",
+            brandClass: "brand-paypal",
+            meta: "Wallet + tarjetas"
         },
         {
             id: "stripe_ach",
             provider: "stripe_ach",
             label: "ACH Estados Unidos",
-            description: "Debito bancario para cuentas estadounidenses."
+            description: "Debito bancario para cuentas estadounidenses.",
+            badge: "ACH",
+            brandClass: "brand-ach",
+            meta: "Cuenta bancaria USA"
         }
     ],
     CLP: [
@@ -85,7 +94,10 @@ const PAYMENT_GATEWAYS = {
             id: "webpay_plus",
             provider: "webpay_plus",
             label: "Webpay Plus",
-            description: "Pasarela recomendada para Chile con Transbank."
+            description: "Pasarela recomendada para Chile con Transbank.",
+            badge: "W",
+            brandClass: "brand-webpay",
+            meta: "Transbank Chile"
         }
     ],
     VES: [
@@ -93,13 +105,19 @@ const PAYMENT_GATEWAYS = {
             id: "mercantil",
             provider: "mercantil",
             label: "Mercantil",
-            description: "Boton de pago local para recaudo en Venezuela."
+            description: "Boton de pago local para recaudo en Venezuela.",
+            badge: "M",
+            brandClass: "brand-mercantil",
+            meta: "Banco Mercantil"
         },
         {
             id: "banesco",
             provider: "banesco",
             label: "BanescoPagos",
-            description: "Alternativa local para cobro en bolivares."
+            description: "Alternativa local para cobro en bolivares.",
+            badge: "B",
+            brandClass: "brand-banesco",
+            meta: "Banco Banesco"
         }
     ]
 };
@@ -522,7 +540,13 @@ function renderCheckoutGateways(booking) {
 
     checkoutGatewayList.innerHTML = gateways.map((gateway) => `
         <article class="checkout-gateway ${gateway.id === state.selectedGatewayId ? "active" : ""}" data-gateway-id="${gateway.id}">
-            <h3>${gateway.label}</h3>
+            <div class="checkout-gateway-head">
+                <div class="gateway-badge ${gateway.brandClass || ""}">${gateway.badge || gateway.label.slice(0, 1)}</div>
+                <div class="checkout-gateway-copy">
+                    <h3>${gateway.label}</h3>
+                    <span class="checkout-gateway-meta">${gateway.meta || ""}</span>
+                </div>
+            </div>
             <p>${gateway.description}</p>
         </article>
     `).join("");
