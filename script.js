@@ -1,18 +1,3 @@
-const appConfig = window.APP_CONFIG || {
-    SUPABASE_URL: "",
-    SUPABASE_ANON_KEY: ""
-};
-
-const hasSupabaseConfig = Boolean(
-    window.supabase &&
-    appConfig.SUPABASE_URL &&
-    appConfig.SUPABASE_ANON_KEY
-);
-
-const supabaseClient = hasSupabaseConfig
-    ? window.supabase.createClient(appConfig.SUPABASE_URL, appConfig.SUPABASE_ANON_KEY)
-    : null;
-
 const SERVICES = [
     {
         id: "fbo-vip",
@@ -46,6 +31,21 @@ const EXCHANGE_RATES = {
     CLP: 980
 };
 
+const appConfig = window.APP_CONFIG || {
+    SUPABASE_URL: "",
+    SUPABASE_ANON_KEY: ""
+};
+
+const hasSupabaseConfig = Boolean(
+    window.supabase &&
+    appConfig.SUPABASE_URL &&
+    appConfig.SUPABASE_ANON_KEY
+);
+
+const supabaseClient = hasSupabaseConfig
+    ? window.supabase.createClient(appConfig.SUPABASE_URL, appConfig.SUPABASE_ANON_KEY)
+    : null;
+
 const AIRPORTS = [
     { code: "LSP", city: "Las Piedras" },
     { code: "CCS", city: "Caracas" },
@@ -60,7 +60,8 @@ const ROUTE_PRICES_USD = {
 };
 
 const state = {
-    editMode: false
+    editMode: false,
+    flights: []
 };
 
 const servicesGrid = document.getElementById("services-grid");
@@ -108,7 +109,18 @@ function renderServiceSelect() {
 }
 
 function renderAirportOptions() {
-    const options = AIRPORTS.map((airport) => `
+    const sourceAirports = state.flights.length > 0
+        ? Array.from(
+            new Map(
+                state.flights.flatMap((flight) => [
+                    [flight.origin, flight.origin],
+                    [flight.destination, flight.destination]
+                ])
+            ).keys()
+        ).map((code) => AIRPORTS.find((airport) => airport.code === code) || { code, city: code })
+        : AIRPORTS;
+
+    const options = sourceAirports.map((airport) => `
         <option value="${airport.code}">${airport.city} (${airport.code})</option>
     `).join("");
 
@@ -121,11 +133,53 @@ function routeKey(origin, destination) {
 }
 
 function getRoutePriceUSD(origin, destination) {
+    const dbFlight = state.flights.find((flight) => flight.origin === origin && flight.destination === destination);
+    if (dbFlight) {
+        return Number(dbFlight.price_usd);
+    }
+
     return ROUTE_PRICES_USD[routeKey(origin, destination)];
 }
 
 function validateRoute(origin, destination) {
     return Boolean(getRoutePriceUSD(origin, destination));
+}
+
+function findMatchingFlight(origin, destination, departDate) {
+    return state.flights.find((flight) => {
+        const departureDate = String(flight.departure_at || "").slice(0, 10);
+        return flight.origin === origin && flight.destination === destination && departureDate === departDate;
+    });
+}
+
+async function loadFlightsFromSupabase() {
+    if (!supabaseClient) {
+        bookingSummary.innerHTML = "Modo demo activo. Agrega tu Project URL y Publishable key en config.js para leer vuelos reales desde Supabase.";
+        return;
+    }
+
+    bookingSummary.innerHTML = "Consultando vuelos disponibles...";
+
+    const { data, error } = await supabaseClient
+        .from("flights")
+        .select("id, origin, destination, departure_at, arrival_at, seats_total, seats_available, price_usd, status")
+        .eq("status", "scheduled")
+        .order("departure_at", { ascending: true });
+
+    if (error) {
+        bookingSummary.innerHTML = `<strong>Error:</strong> no se pudo leer la tabla flights en Supabase. ${error.message}`;
+        return;
+    }
+
+    state.flights = data || [];
+    renderAirportOptions();
+
+    if (state.flights.length === 0) {
+        bookingSummary.innerHTML = "No hay vuelos cargados todavia en Supabase. Inserta registros en la tabla flights para visualizarlos aqui.";
+        return;
+    }
+
+    bookingSummary.innerHTML = `${state.flights.length} vuelo(s) cargado(s) desde Supabase. Selecciona origen, destino y fecha para consultar disponibilidad.`;
 }
 
 function handleBookingSubmit(event) {
@@ -154,6 +208,12 @@ function handleBookingSubmit(event) {
         return;
     }
 
+    const outboundFlight = findMatchingFlight(origin, destination, depart);
+    if (state.flights.length > 0 && !outboundFlight) {
+        bookingSummary.innerHTML = "<strong>Error:</strong> no hay un vuelo cargado en Supabase para esa fecha y ruta.";
+        return;
+    }
+
     if (tripType === "roundtrip") {
         if (!returnDate) {
             bookingSummary.innerHTML = "<strong>Error:</strong> selecciona fecha de vuelta.";
@@ -163,6 +223,14 @@ function handleBookingSubmit(event) {
             bookingSummary.innerHTML = "<strong>Error:</strong> la fecha de vuelta no puede ser menor que la fecha de ida.";
             return;
         }
+
+        if (state.flights.length > 0) {
+            const returnFlight = findMatchingFlight(destination, origin, returnDate);
+            if (!returnFlight) {
+                bookingSummary.innerHTML = "<strong>Error:</strong> no hay vuelo de regreso cargado en Supabase para esa fecha.";
+                return;
+            }
+        }
     }
 
     const oneWayUSD = getRoutePriceUSD(origin, destination) * passengers;
@@ -171,7 +239,7 @@ function handleBookingSubmit(event) {
     const totalCurrency = totalUSD * EXCHANGE_RATES[currency];
 
     bookingSummary.innerHTML = `
-        <strong>Reserva generada (demo)</strong><br>
+        <strong>Reserva generada</strong><br>
         Ruta: ${origin} -> ${destination}${tripType === "roundtrip" ? " (ida y vuelta)" : " (solo ida)"}<br>
         Fecha ida: ${depart}${tripType === "roundtrip" ? `<br>Fecha vuelta: ${returnDate}` : ""}<br>
         Pasajeros: ${passengers}<br>
@@ -301,6 +369,7 @@ function init() {
     loadEditableText();
     setEditMode(false);
     setupEditing();
+    loadFlightsFromSupabase();
 
     bookingForm.addEventListener("submit", handleBookingSubmit);
     paymentForm.addEventListener("submit", handlePaymentSubmit);
