@@ -44,29 +44,32 @@ body {
 .logo {
     text-decoration: none;
     display: flex;
-    align-items: baseline;
-    gap: 0.15rem;
+    align-items: center;
+    gap: 0.7rem;
 }
 
-.logo-aero {
-    color: #d62544;
-    font-size: 2rem;
-    font-style: italic;
+.logo-image {
+    width: 148px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.logo-text {
+    display: grid;
+    line-height: 1.05;
+}
+
+.logo-text strong {
+    color: #173b6b;
+    font-size: 1.05rem;
     font-weight: 800;
-    line-height: 1;
 }
 
-.logo-para {
-    color: #1c4b85;
-    font-size: 2rem;
-    font-weight: 800;
-    line-height: 1;
-}
-
-.logo small {
-    color: #1c4b85;
+.logo-text small {
+    color: #537197;
     font-weight: 700;
-    margin-left: 0.2rem;
+    font-size: 0.78rem;
 }
 
 .menu {
@@ -559,9 +562,16 @@ main {
         min-height: 74px;
     }
 
-    .logo-aero,
-    .logo-para {
-        font-size: 1.5rem;
+    .logo {
+        gap: 0.45rem;
+    }
+
+    .logo-image {
+        width: 116px;
+    }
+
+    .logo-text strong {
+        font-size: 0.9rem;
     }
 
     .top-actions {
