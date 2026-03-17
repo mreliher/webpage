@@ -187,7 +187,6 @@ function setUserUI(session) {
     authButton.textContent = "Iniciar sesion";
     registerButton.style.display = "inline-flex";
 }
-
 function findMatchingFlight(origin, destination, departDate) {
     return state.flights.find((flight) => {
         const departureDate = String(flight.departure_at || "").slice(0, 10);
@@ -364,7 +363,6 @@ async function handleBookingSubmit(event) {
     if (outboundFlight) {
         flightsToBook.push(outboundFlight);
     }
-
     if (tripType === "roundtrip") {
         if (!returnDate) {
             bookingSummary.innerHTML = "<strong>Error:</strong> selecciona fecha de vuelta.";
