@@ -278,12 +278,14 @@ function validateRoute(origin, destination) {
 function openAuthModal() {
     authModal.classList.remove("hidden");
     authModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
     setAuthMessage(authMode === "signup" ? "Completa tus datos para crear tu cuenta." : "Inicia sesion para continuar.");
 }
 
 function closeAuthModal() {
     authModal.classList.add("hidden");
     authModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
 }
 
 function setAuthMessage(message, isError = false) {
@@ -523,6 +525,7 @@ function closeCheckoutModal() {
     checkoutBookingInfo.innerHTML = "";
     checkoutGatewayList.innerHTML = "";
     setCheckoutMessage("");
+    document.body.classList.remove("modal-open");
 }
 
 function renderCheckoutGateways(booking) {
@@ -575,6 +578,8 @@ function openCheckoutModal(bookingId) {
     setCheckoutMessage("Selecciona una pasarela y registra el intento de pago.");
     checkoutModal.classList.remove("hidden");
     checkoutModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    checkoutModal.querySelector(".auth-panel")?.focus?.();
 }
 
 async function createPaymentAttempt(booking, gateway) {
