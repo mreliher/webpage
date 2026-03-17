@@ -222,6 +222,10 @@ function isPayPalGateway(gateway) {
     return gateway?.provider === "paypal";
 }
 
+function isWebpayGateway(gateway) {
+    return gateway?.provider === "webpay_plus";
+}
+
 function renderServices() {
     servicesGrid.innerHTML = SERVICES.map((service) => `
         <article class="service-card">
@@ -673,6 +677,39 @@ async function createPayPalOrder(booking, gateway) {
     return payload;
 }
 
+async function createWebpayTransaction(booking, gateway) {
+    if (!state.session?.access_token) {
+        throw new Error("No hay una sesion valida para iniciar Webpay.");
+    }
+
+    const response = await fetch("/api/create-webpay-transaction", {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${state.session.access_token}`
+        },
+        body: JSON.stringify({
+            bookingId: booking.id,
+            gatewayId: gateway.id
+        })
+    });
+
+    const rawText = await response.text();
+    let payload = {};
+
+    try {
+        payload = rawText ? JSON.parse(rawText) : {};
+    } catch (error) {
+        throw new Error(rawText || "La API de Webpay devolvio una respuesta invalida.");
+    }
+
+    if (!response.ok) {
+        throw new Error(payload.error || "No se pudo crear la transaccion de Webpay.");
+    }
+
+    return payload;
+}
+
 async function handleCheckoutConfirm() {
     if (!state.checkoutBookingId) {
         setCheckoutMessage("Selecciona una reserva valida.", true);
@@ -697,6 +734,8 @@ async function handleCheckoutConfirm() {
             ? "Creando Checkout de Stripe..."
             : isPayPalGateway(gateway)
                 ? "Creando orden de PayPal..."
+                : isWebpayGateway(gateway)
+                    ? "Creando transaccion de Webpay..."
                 : "Registrando intento de pago en Supabase..."
     );
 
@@ -712,6 +751,25 @@ async function handleCheckoutConfirm() {
             const order = await createPayPalOrder(booking, gateway);
             setCheckoutMessage("Redirigiendo a PayPal...");
             window.location.href = order.approvalUrl;
+            return;
+        }
+
+        if (isWebpayGateway(gateway)) {
+            const transaction = await createWebpayTransaction(booking, gateway);
+            setCheckoutMessage("Redirigiendo a Webpay Plus...");
+
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = transaction.url;
+
+            const tokenInput = document.createElement("input");
+            tokenInput.type = "hidden";
+            tokenInput.name = "token_ws";
+            tokenInput.value = transaction.token;
+            form.appendChild(tokenInput);
+
+            document.body.appendChild(form);
+            form.submit();
             return;
         }
 
