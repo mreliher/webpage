@@ -68,6 +68,12 @@ const PAYMENT_GATEWAYS = {
             description: "Tarjetas internacionales y checkout web en dolares."
         },
         {
+            id: "paypal",
+            provider: "paypal",
+            label: "PayPal",
+            description: "Pago con cuenta PayPal o tarjetas segun disponibilidad del pais."
+        },
+        {
             id: "stripe_ach",
             provider: "stripe_ach",
             label: "ACH Estados Unidos",
@@ -192,6 +198,10 @@ function getGatewayOptions(currency) {
 
 function isStripeGateway(gateway) {
     return gateway?.provider === "stripe" || gateway?.provider === "stripe_ach";
+}
+
+function isPayPalGateway(gateway) {
+    return gateway?.provider === "paypal";
 }
 
 function renderServices() {
@@ -601,6 +611,39 @@ async function createStripeCheckoutSession(booking, gateway) {
     return payload;
 }
 
+async function createPayPalOrder(booking, gateway) {
+    if (!state.session?.access_token) {
+        throw new Error("No hay una sesion valida para iniciar PayPal.");
+    }
+
+    const response = await fetch("/api/create-paypal-order", {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${state.session.access_token}`
+        },
+        body: JSON.stringify({
+            bookingId: booking.id,
+            gatewayId: gateway.id
+        })
+    });
+
+    const rawText = await response.text();
+    let payload = {};
+
+    try {
+        payload = rawText ? JSON.parse(rawText) : {};
+    } catch (error) {
+        throw new Error(rawText || "La API de PayPal devolvio una respuesta invalida.");
+    }
+
+    if (!response.ok) {
+        throw new Error(payload.error || "No se pudo crear la orden de PayPal.");
+    }
+
+    return payload;
+}
+
 async function handleCheckoutConfirm() {
     if (!state.checkoutBookingId) {
         setCheckoutMessage("Selecciona una reserva valida.", true);
@@ -620,13 +663,26 @@ async function handleCheckoutConfirm() {
     }
 
     checkoutConfirmButton.disabled = true;
-    setCheckoutMessage(isStripeGateway(gateway) ? "Creando Checkout de Stripe..." : "Registrando intento de pago en Supabase...");
+    setCheckoutMessage(
+        isStripeGateway(gateway)
+            ? "Creando Checkout de Stripe..."
+            : isPayPalGateway(gateway)
+                ? "Creando orden de PayPal..."
+                : "Registrando intento de pago en Supabase..."
+    );
 
     try {
         if (isStripeGateway(gateway)) {
             const session = await createStripeCheckoutSession(booking, gateway);
             setCheckoutMessage("Redirigiendo a Stripe Checkout...");
             window.location.href = session.url;
+            return;
+        }
+
+        if (isPayPalGateway(gateway)) {
+            const order = await createPayPalOrder(booking, gateway);
+            setCheckoutMessage("Redirigiendo a PayPal...");
+            window.location.href = order.approvalUrl;
             return;
         }
 
