@@ -335,6 +335,40 @@ main {
     margin: 0.4rem 0;
 }
 
+.my-bookings-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.booking-item-card,
+.empty-bookings {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #f8fbff;
+    padding: 0.95rem;
+}
+
+.booking-item-card h3 {
+    color: #1d446f;
+    margin-bottom: 0.3rem;
+}
+
+.booking-meta {
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.booking-status {
+    display: inline-flex;
+    margin-top: 0.55rem;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    background: #e7f1ff;
+    color: #1c4b85;
+    font-weight: 800;
+    font-size: 0.88rem;
+}
+
 .service-price {
     color: var(--brand-2);
     font-weight: 800;

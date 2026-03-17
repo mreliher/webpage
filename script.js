@@ -83,6 +83,7 @@ const signInButton = document.getElementById("signin-btn");
 
 const bookingForm = document.getElementById("booking-form");
 const bookingSummary = document.getElementById("booking-summary");
+const myBookingsList = document.getElementById("my-bookings-list");
 const originSelect = document.getElementById("booking-origin");
 const destinationSelect = document.getElementById("booking-destination");
 const departInput = document.getElementById("booking-depart");
@@ -187,6 +188,41 @@ function setUserUI(session) {
     authButton.textContent = "Iniciar sesion";
     registerButton.style.display = "inline-flex";
 }
+
+function renderMyBookings(bookings) {
+    if (!state.session?.user?.id) {
+        myBookingsList.innerHTML = '<div class="empty-bookings">Inicia sesion para ver tus reservas.</div>';
+        return;
+    }
+
+    if (!bookings || bookings.length === 0) {
+        myBookingsList.innerHTML = '<div class="empty-bookings">Todavia no tienes reservas guardadas.</div>';
+        return;
+    }
+
+    myBookingsList.innerHTML = bookings.map((booking) => {
+        const flight = booking.flights || {};
+        const route = flight.origin && flight.destination
+            ? `${flight.origin} -> ${flight.destination}`
+            : `Vuelo ${booking.flight_id}`;
+        const departure = flight.departure_at
+            ? String(flight.departure_at).slice(0, 16).replace("T", " ")
+            : "Sin fecha";
+
+        return `
+            <article class="booking-item-card">
+                <h3>${route}</h3>
+                <div class="booking-meta">
+                    Reserva: ${booking.id}<br>
+                    Fecha salida: ${departure}<br>
+                    Pasajeros: ${booking.passengers}<br>
+                    Total: ${formatCurrency(Number(booking.total_amount), booking.currency)}
+                </div>
+                <span class="booking-status">${booking.status}</span>
+            </article>
+        `;
+    }).join("");
+}
 function findMatchingFlight(origin, destination, departDate) {
     return state.flights.find((flight) => {
         const departureDate = String(flight.departure_at || "").slice(0, 10);
@@ -238,6 +274,26 @@ async function loadCurrentSession() {
     setUserUI(data.session);
 }
 
+async function loadMyBookings() {
+    if (!supabaseClient || !state.session?.user?.id) {
+        renderMyBookings([]);
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("bookings")
+        .select("id, flight_id, passengers, currency, total_amount, status, flights:flight_id(origin, destination, departure_at)")
+        .eq("user_id", state.session.user.id)
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        myBookingsList.innerHTML = `<div class="empty-bookings">No se pudieron cargar tus reservas. ${error.message}</div>`;
+        return;
+    }
+
+    renderMyBookings(data || []);
+}
+
 async function signUpWithEmail() {
     if (!supabaseClient) {
         setAuthMessage("Primero completa config.js con tu Project URL y Publishable key.", true);
@@ -274,6 +330,7 @@ async function signInWithEmail() {
     setUserUI(data.session);
     setAuthMessage("Sesion iniciada correctamente.");
     authForm.reset();
+    await loadMyBookings();
     window.setTimeout(closeAuthModal, 400);
 }
 
@@ -290,6 +347,7 @@ async function signOutCurrentUser() {
 
     setUserUI(null);
     setAuthMessage("");
+    renderMyBookings([]);
 }
 
 function setAuthMode(mode) {
@@ -420,6 +478,7 @@ async function handleBookingSubmit(event) {
             Total: ${formatCurrency(totalCurrency, currency)}<br>
             Reservas guardadas en Supabase: ${insertedBookings.length}
         `;
+        await loadMyBookings();
     } catch (error) {
         bookingSummary.innerHTML = `<strong>Error:</strong> no se pudo guardar la reserva en bookings. ${error.message}`;
     }
@@ -547,6 +606,7 @@ async function init() {
     setAuthMode("signin");
     await loadCurrentSession();
     await loadFlightsFromSupabase();
+    await loadMyBookings();
 
     bookingForm.addEventListener("submit", handleBookingSubmit);
     paymentForm.addEventListener("submit", handlePaymentSubmit);
