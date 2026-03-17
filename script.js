@@ -59,10 +59,52 @@ const ROUTE_PRICES_USD = {
     "CUR-LSP": 145
 };
 
+const PAYMENT_GATEWAYS = {
+    USD: [
+        {
+            id: "stripe_card",
+            provider: "stripe",
+            label: "Stripe Checkout",
+            description: "Tarjetas internacionales y checkout web en dolares."
+        },
+        {
+            id: "stripe_ach",
+            provider: "stripe_ach",
+            label: "ACH Estados Unidos",
+            description: "Debito bancario para cuentas estadounidenses."
+        }
+    ],
+    CLP: [
+        {
+            id: "webpay_plus",
+            provider: "webpay_plus",
+            label: "Webpay Plus",
+            description: "Pasarela recomendada para Chile con Transbank."
+        }
+    ],
+    VES: [
+        {
+            id: "mercantil",
+            provider: "mercantil",
+            label: "Mercantil",
+            description: "Boton de pago local para recaudo en Venezuela."
+        },
+        {
+            id: "banesco",
+            provider: "banesco",
+            label: "BanescoPagos",
+            description: "Alternativa local para cobro en bolivares."
+        }
+    ]
+};
+
 const state = {
     editMode: false,
     flights: [],
-    session: null
+    session: null,
+    myBookings: [],
+    checkoutBookingId: null,
+    selectedGatewayId: null
 };
 
 const servicesGrid = document.getElementById("services-grid");
@@ -90,6 +132,12 @@ const departInput = document.getElementById("booking-depart");
 const returnInput = document.getElementById("booking-return");
 const passengerSelect = document.getElementById("booking-passengers");
 const bookingCurrency = document.getElementById("booking-currency");
+const checkoutModal = document.getElementById("checkout-modal");
+const checkoutBookingInfo = document.getElementById("checkout-booking-info");
+const checkoutGatewayList = document.getElementById("checkout-gateway-list");
+const checkoutMessage = document.getElementById("checkout-message");
+const checkoutConfirmButton = document.getElementById("checkout-confirm");
+const closeCheckoutButton = document.getElementById("close-checkout");
 let authMode = "signin";
 const OPERATING_AIRLINE = "Aeroturpial";
 
@@ -126,6 +174,20 @@ function generatePnr() {
         result += alphabet[randomPosition];
     }
     return result;
+}
+
+function generatePaymentReference() {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let result = "PAY-";
+    for (let index = 0; index < 8; index += 1) {
+        const randomPosition = Math.floor(Math.random() * alphabet.length);
+        result += alphabet[randomPosition];
+    }
+    return result;
+}
+
+function getGatewayOptions(currency) {
+    return PAYMENT_GATEWAYS[currency] || [];
 }
 
 function renderServices() {
@@ -243,6 +305,9 @@ function renderMyBookings(bookings) {
                     Pasajeros: ${booking.passengers}<br>
                     Total: ${formatCurrency(Number(booking.total_amount), booking.currency)}
                 </div>
+                <div class="booking-card-actions">
+                    ${booking.status === "pending" ? `<button class="booking-pay-btn" type="button" data-booking-id="${booking.id}">Pagar ahora</button>` : ""}
+                </div>
                 <span class="booking-status">${booking.status}</span>
             </article>
         `;
@@ -301,6 +366,7 @@ async function loadCurrentSession() {
 
 async function loadMyBookings() {
     if (!supabaseClient || !state.session?.user?.id) {
+        state.myBookings = [];
         renderMyBookings([]);
         return;
     }
@@ -316,7 +382,8 @@ async function loadMyBookings() {
         return;
     }
 
-    renderMyBookings(data || []);
+    state.myBookings = data || [];
+    renderMyBookings(state.myBookings);
 }
 
 async function signUpWithEmail() {
@@ -402,13 +469,130 @@ async function saveBookingsToSupabase(payload) {
     const { data, error } = await supabaseClient
         .from("bookings")
         .insert(payload)
-        .select("id, flight_id, total_amount, currency, status");
+        .select("id, pnr, flight_id, total_amount, currency, status");
 
     if (error) {
         throw error;
     }
 
     return data || [];
+}
+
+function setCheckoutMessage(message, isError = false) {
+    checkoutMessage.textContent = message;
+    checkoutMessage.style.color = isError ? "#c5334d" : "#315578";
+}
+
+function closeCheckoutModal() {
+    checkoutModal.classList.add("hidden");
+    checkoutModal.setAttribute("aria-hidden", "true");
+    state.checkoutBookingId = null;
+    state.selectedGatewayId = null;
+    checkoutBookingInfo.innerHTML = "";
+    checkoutGatewayList.innerHTML = "";
+    setCheckoutMessage("");
+}
+
+function renderCheckoutGateways(booking) {
+    const gateways = getGatewayOptions(booking.currency);
+
+    if (gateways.length === 0) {
+        checkoutGatewayList.innerHTML = '<div class="empty-bookings">No hay pasarelas configuradas para esta moneda.</div>';
+        state.selectedGatewayId = null;
+        return;
+    }
+
+    if (!state.selectedGatewayId || !gateways.some((gateway) => gateway.id === state.selectedGatewayId)) {
+        state.selectedGatewayId = gateways[0].id;
+    }
+
+    checkoutGatewayList.innerHTML = gateways.map((gateway) => `
+        <article class="checkout-gateway ${gateway.id === state.selectedGatewayId ? "active" : ""}" data-gateway-id="${gateway.id}">
+            <h3>${gateway.label}</h3>
+            <p>${gateway.description}</p>
+        </article>
+    `).join("");
+}
+
+function openCheckoutModal(bookingId) {
+    const booking = state.myBookings.find((item) => item.id === bookingId);
+    if (!booking) {
+        return;
+    }
+
+    state.checkoutBookingId = booking.id;
+    const route = booking.flights?.origin && booking.flights?.destination
+        ? `${booking.flights.origin} -> ${booking.flights.destination}`
+        : `Vuelo ${booking.flight_id}`;
+
+    checkoutBookingInfo.innerHTML = `
+        <strong>Reserva:</strong> ${route}<br>
+        <strong>PNR:</strong> ${buildPnrFromBooking(booking)}<br>
+        <strong>Aerolinea operadora:</strong> ${OPERATING_AIRLINE}<br>
+        <strong>Total:</strong> ${formatCurrency(Number(booking.total_amount), booking.currency)}<br>
+        <strong>Estado actual:</strong> ${booking.status}
+    `;
+
+    renderCheckoutGateways(booking);
+    setCheckoutMessage("Selecciona una pasarela y registra el intento de pago.");
+    checkoutModal.classList.remove("hidden");
+    checkoutModal.setAttribute("aria-hidden", "false");
+}
+
+async function createPaymentAttempt(booking, gateway) {
+    if (!supabaseClient || !state.session?.user?.id) {
+        throw new Error("Debes iniciar sesion para iniciar pagos.");
+    }
+
+    const { data, error } = await supabaseClient
+        .from("payments")
+        .insert({
+            booking_id: booking.id,
+            provider: gateway.provider,
+            amount: Number(booking.total_amount),
+            currency: booking.currency,
+            status: "created",
+            reference: generatePaymentReference()
+        })
+        .select("id, provider, amount, currency, status, reference")
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+}
+
+async function handleCheckoutConfirm() {
+    if (!state.checkoutBookingId) {
+        setCheckoutMessage("Selecciona una reserva valida.", true);
+        return;
+    }
+
+    const booking = state.myBookings.find((item) => item.id === state.checkoutBookingId);
+    if (!booking) {
+        setCheckoutMessage("No se encontro la reserva seleccionada.", true);
+        return;
+    }
+
+    const gateway = getGatewayOptions(booking.currency).find((item) => item.id === state.selectedGatewayId);
+    if (!gateway) {
+        setCheckoutMessage("Debes seleccionar una pasarela.", true);
+        return;
+    }
+
+    checkoutConfirmButton.disabled = true;
+    setCheckoutMessage("Registrando intento de pago en Supabase...");
+
+    try {
+        const payment = await createPaymentAttempt(booking, gateway);
+        setCheckoutMessage(`Intento de pago creado. Referencia ${payment.reference}. Pasarela objetivo: ${gateway.label}. Para cobro real, el siguiente paso es redirigir desde backend y confirmar el resultado por webhook.`);
+    } catch (error) {
+        setCheckoutMessage(`No se pudo registrar el pago. ${error.message}`, true);
+    } finally {
+        checkoutConfirmButton.disabled = false;
+    }
 }
 
 async function handleBookingSubmit(event) {
@@ -527,13 +711,16 @@ function handlePaymentSubmit(event) {
 
     const service = SERVICES.find((item) => item.id === serviceId);
     const usdAmount = currency === "USD" ? amount : amount / EXCHANGE_RATES[currency];
+    const suggestedGateway = getGatewayOptions(currency)[0];
 
     paymentSummary.innerHTML = `
-        <strong>Pago registrado (demo)</strong><br>
+        <strong>Portal preparado</strong><br>
         Cliente: ${payerName}<br>
         Servicio: ${service ? service.name : "N/A"}<br>
         Monto ingresado: ${formatCurrency(amount, currency)}<br>
-        Equivalente: ${formatCurrency(usdAmount, "USD")} | ${formatCurrency(usdAmount * EXCHANGE_RATES.VES, "VES")} | ${formatCurrency(usdAmount * EXCHANGE_RATES.CLP, "CLP")}
+        Pasarela sugerida: ${suggestedGateway ? suggestedGateway.label : "Pendiente de configurar"}<br>
+        Equivalente: ${formatCurrency(usdAmount, "USD")} | ${formatCurrency(usdAmount * EXCHANGE_RATES.VES, "VES")} | ${formatCurrency(usdAmount * EXCHANGE_RATES.CLP, "CLP")}<br>
+        Nota: para cobro real de servicios sin reserva se requiere backend y conciliacion con tu proveedor de pagos.
     `;
 }
 
@@ -571,6 +758,38 @@ function setupAuthUI() {
 
     signUpButton.addEventListener("click", signUpWithEmail);
     signInButton.addEventListener("click", signInWithEmail);
+}
+
+function setupCheckoutUI() {
+    myBookingsList.addEventListener("click", (event) => {
+        const trigger = event.target.closest(".booking-pay-btn");
+        if (!trigger) {
+            return;
+        }
+
+        openCheckoutModal(trigger.dataset.bookingId);
+    });
+
+    closeCheckoutButton.addEventListener("click", closeCheckoutModal);
+    checkoutModal.addEventListener("click", (event) => {
+        if (event.target.dataset.closeCheckout === "true") {
+            closeCheckoutModal();
+            return;
+        }
+
+        const gatewayCard = event.target.closest(".checkout-gateway");
+        if (!gatewayCard) {
+            return;
+        }
+
+        state.selectedGatewayId = gatewayCard.dataset.gatewayId;
+        const booking = state.myBookings.find((item) => item.id === state.checkoutBookingId);
+        if (booking) {
+            renderCheckoutGateways(booking);
+        }
+    });
+
+    checkoutConfirmButton.addEventListener("click", handleCheckoutConfirm);
 }
 
 function setupTripTypeToggle() {
@@ -631,6 +850,7 @@ async function init() {
     setupBannerSlider();
     loadEditableText();
     setupAuthUI();
+    setupCheckoutUI();
     setAuthMode("signin");
     await loadCurrentSession();
     await loadFlightsFromSupabase();

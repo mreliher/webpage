@@ -353,6 +353,13 @@ main {
     margin-bottom: 0.3rem;
 }
 
+.booking-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 0.8rem;
+}
+
 .booking-meta {
     color: var(--muted);
     line-height: 1.55;
@@ -369,9 +376,78 @@ main {
     font-size: 0.88rem;
 }
 
+.booking-pay-btn {
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #1e7fd1, #194d98);
+    color: #fff;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+    padding: 0.7rem 0.95rem;
+}
+
 .service-price {
     color: var(--brand-2);
     font-weight: 800;
+}
+
+.gateway-grid,
+.checkout-gateway-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.95rem;
+}
+
+.gateway-card,
+.checkout-gateway {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #f8fbff;
+    padding: 0.95rem;
+}
+
+.gateway-card h3,
+.checkout-gateway h3 {
+    color: #1d446f;
+    margin-bottom: 0.35rem;
+}
+
+.gateway-card p,
+.checkout-gateway p {
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.checkout-gateway {
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.checkout-gateway.active {
+    border-color: #1e7fd1;
+    box-shadow: 0 10px 24px rgba(30, 127, 209, 0.14);
+    transform: translateY(-1px);
+}
+
+.checkout-booking-info {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #f8fbff;
+    color: var(--muted);
+    line-height: 1.6;
+    padding: 0.9rem;
+    margin-bottom: 0.95rem;
+}
+
+.checkout-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.checkout-panel {
+    width: min(760px, calc(100vw - 2rem));
 }
 
 .payment-form {

@@ -128,7 +128,24 @@
         <section id="pagos" class="section">
             <div class="section-head">
                 <h2>Portal de pagos</h2>
-                <p>Paga servicios en USD, VES o CLP.</p>
+                <p>Paga servicios en USD, VES o CLP y deja lista la conciliacion en Supabase.</p>
+            </div>
+            <div class="gateway-grid">
+                <article class="gateway-card">
+                    <h3>CLP</h3>
+                    <p><strong>Pasarela objetivo:</strong> Webpay Plus de Transbank.</p>
+                    <p>Ideal para tarjetas emitidas en Chile y operacion local.</p>
+                </article>
+                <article class="gateway-card">
+                    <h3>USD</h3>
+                    <p><strong>Pasarela objetivo:</strong> Stripe Checkout / ACH.</p>
+                    <p>Permite tarjetas y metodos bancarios de Estados Unidos.</p>
+                </article>
+                <article class="gateway-card">
+                    <h3>VES</h3>
+                    <p><strong>Pasarela objetivo:</strong> Mercantil o Banesco.</p>
+                    <p>En Venezuela normalmente se integra boton de pago, no banco por banco.</p>
+                </article>
             </div>
             <form id="payment-form" class="payment-form">
                 <label>
@@ -185,6 +202,21 @@
                 </div>
             </form>
             <div id="auth-message" class="auth-message"></div>
+        </div>
+    </div>
+
+    <div id="checkout-modal" class="auth-modal hidden" aria-hidden="true">
+        <div class="auth-backdrop" data-close-checkout="true"></div>
+        <div class="auth-panel checkout-panel">
+            <button id="close-checkout" class="close-auth" type="button" aria-label="Cerrar">&times;</button>
+            <h2>Iniciar pago de reserva</h2>
+            <p class="auth-copy">Selecciona la pasarela sugerida para la moneda de tu reserva. Este paso registra el intento de pago en Supabase.</p>
+            <div id="checkout-booking-info" class="checkout-booking-info"></div>
+            <div id="checkout-gateway-list" class="checkout-gateway-list"></div>
+            <div class="checkout-actions">
+                <button id="checkout-confirm" class="search-btn" type="button">Registrar intento de pago</button>
+            </div>
+            <div id="checkout-message" class="auth-message"></div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
