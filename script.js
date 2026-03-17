@@ -118,6 +118,16 @@ function buildPnrFromBooking(booking) {
     return (source + "AER123").slice(0, 6);
 }
 
+function generatePnr() {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let result = "";
+    for (let index = 0; index < 6; index += 1) {
+        const randomPosition = Math.floor(Math.random() * alphabet.length);
+        result += alphabet[randomPosition];
+    }
+    return result;
+}
+
 function renderServices() {
     servicesGrid.innerHTML = SERVICES.map((service) => `
         <article class="service-card">
@@ -374,6 +384,7 @@ function setAuthMode(mode) {
 function buildBookingRows({ flightsToBook, passengers, currency, totalUSD }) {
     const amountPerSegmentUSD = totalUSD / flightsToBook.length;
     return flightsToBook.map((flight) => ({
+        pnr: generatePnr(),
         user_id: state.session.user.id,
         flight_id: flight.id,
         passengers,
