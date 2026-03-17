@@ -31,6 +31,21 @@ const EXCHANGE_RATES = {
     CLP: 980
 };
 
+const appConfig = window.APP_CONFIG || {
+    SUPABASE_URL: "",
+    SUPABASE_ANON_KEY: ""
+};
+
+const hasSupabaseConfig = Boolean(
+    window.supabase &&
+    appConfig.SUPABASE_URL &&
+    appConfig.SUPABASE_ANON_KEY
+);
+
+const supabaseClient = hasSupabaseConfig
+    ? window.supabase.createClient(appConfig.SUPABASE_URL, appConfig.SUPABASE_ANON_KEY)
+    : null;
+
 const AIRPORTS = [
     { code: "LSP", city: "Las Piedras" },
     { code: "CCS", city: "Caracas" },
@@ -45,14 +60,26 @@ const ROUTE_PRICES_USD = {
 };
 
 const state = {
-    editMode: false
+    editMode: false,
+    flights: [],
+    session: null
 };
 
 const servicesGrid = document.getElementById("services-grid");
 const serviceSelect = document.getElementById("service-select");
 const paymentForm = document.getElementById("payment-form");
 const paymentSummary = document.getElementById("payment-summary");
-const toggleEditButton = document.getElementById("toggle-edit");
+const authButton = document.getElementById("auth-btn");
+const registerButton = document.getElementById("register-btn");
+const authStatus = document.getElementById("auth-status");
+const authModal = document.getElementById("auth-modal");
+const closeAuthButton = document.getElementById("close-auth");
+const authForm = document.getElementById("auth-form");
+const authEmailInput = document.getElementById("auth-email");
+const authPasswordInput = document.getElementById("auth-password");
+const authMessage = document.getElementById("auth-message");
+const signUpButton = document.getElementById("signup-btn");
+const signInButton = document.getElementById("signin-btn");
 
 const bookingForm = document.getElementById("booking-form");
 const bookingSummary = document.getElementById("booking-summary");
@@ -62,6 +89,7 @@ const departInput = document.getElementById("booking-depart");
 const returnInput = document.getElementById("booking-return");
 const passengerSelect = document.getElementById("booking-passengers");
 const bookingCurrency = document.getElementById("booking-currency");
+let authMode = "signin";
 
 function formatCurrency(amount, currency) {
     const locales = {
@@ -93,7 +121,18 @@ function renderServiceSelect() {
 }
 
 function renderAirportOptions() {
-    const options = AIRPORTS.map((airport) => `
+    const sourceAirports = state.flights.length > 0
+        ? Array.from(
+            new Map(
+                state.flights.flatMap((flight) => [
+                    [flight.origin, flight.origin],
+                    [flight.destination, flight.destination]
+                ])
+            ).keys()
+        ).map((code) => AIRPORTS.find((airport) => airport.code === code) || { code, city: code })
+        : AIRPORTS;
+
+    const options = sourceAirports.map((airport) => `
         <option value="${airport.code}">${airport.city} (${airport.code})</option>
     `).join("");
 
@@ -106,6 +145,11 @@ function routeKey(origin, destination) {
 }
 
 function getRoutePriceUSD(origin, destination) {
+    const dbFlight = state.flights.find((flight) => flight.origin === origin && flight.destination === destination);
+    if (dbFlight) {
+        return Number(dbFlight.price_usd);
+    }
+
     return ROUTE_PRICES_USD[routeKey(origin, destination)];
 }
 
@@ -113,7 +157,178 @@ function validateRoute(origin, destination) {
     return Boolean(getRoutePriceUSD(origin, destination));
 }
 
-function handleBookingSubmit(event) {
+function openAuthModal() {
+    authModal.classList.remove("hidden");
+    authModal.setAttribute("aria-hidden", "false");
+    setAuthMessage(authMode === "signup" ? "Completa tus datos para crear tu cuenta." : "Inicia sesion para continuar.");
+}
+
+function closeAuthModal() {
+    authModal.classList.add("hidden");
+    authModal.setAttribute("aria-hidden", "true");
+}
+
+function setAuthMessage(message, isError = false) {
+    authMessage.textContent = message;
+    authMessage.style.color = isError ? "#c5334d" : "#315578";
+}
+
+function setUserUI(session) {
+    state.session = session || null;
+
+    if (state.session?.user?.email) {
+        authStatus.textContent = state.session.user.email;
+        authButton.textContent = "Cerrar sesion";
+        registerButton.style.display = "none";
+        return;
+    }
+
+    authStatus.textContent = "Sin sesion";
+    authButton.textContent = "Iniciar sesion";
+    registerButton.style.display = "inline-flex";
+}
+
+function findMatchingFlight(origin, destination, departDate) {
+    return state.flights.find((flight) => {
+        const departureDate = String(flight.departure_at || "").slice(0, 10);
+        return flight.origin === origin && flight.destination === destination && departureDate === departDate;
+    });
+}
+
+async function loadFlightsFromSupabase() {
+    if (!supabaseClient) {
+        bookingSummary.innerHTML = "Modo demo activo. Agrega tu Project URL y Publishable key en config.js para leer vuelos reales desde Supabase.";
+        return;
+    }
+
+    bookingSummary.innerHTML = "Consultando vuelos disponibles...";
+
+    const { data, error } = await supabaseClient
+        .from("flights")
+        .select("id, origin, destination, departure_at, arrival_at, seats_total, seats_available, price_usd, status")
+        .eq("status", "scheduled")
+        .order("departure_at", { ascending: true });
+
+    if (error) {
+        bookingSummary.innerHTML = `<strong>Error:</strong> no se pudo leer la tabla flights en Supabase. ${error.message}`;
+        return;
+    }
+
+    state.flights = data || [];
+    renderAirportOptions();
+
+    if (state.flights.length === 0) {
+        bookingSummary.innerHTML = "No hay vuelos cargados todavia en Supabase. Inserta registros en la tabla flights para visualizarlos aqui.";
+        return;
+    }
+
+    bookingSummary.innerHTML = `${state.flights.length} vuelo(s) cargado(s) desde Supabase. Selecciona origen, destino y fecha para consultar disponibilidad.`;
+}
+
+async function loadCurrentSession() {
+    if (!supabaseClient) {
+        return;
+    }
+
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) {
+        setAuthMessage(`No se pudo consultar la sesion. ${error.message}`, true);
+        return;
+    }
+
+    setUserUI(data.session);
+}
+
+async function signUpWithEmail() {
+    if (!supabaseClient) {
+        setAuthMessage("Primero completa config.js con tu Project URL y Publishable key.", true);
+        return;
+    }
+
+    const email = authEmailInput.value.trim();
+    const password = authPasswordInput.value;
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+
+    if (error) {
+        setAuthMessage(error.message, true);
+        return;
+    }
+
+    setAuthMessage("Cuenta creada. Si tu proyecto exige confirmacion por correo, revisa tu email.");
+}
+
+async function signInWithEmail() {
+    if (!supabaseClient) {
+        setAuthMessage("Primero completa config.js con tu Project URL y Publishable key.", true);
+        return;
+    }
+
+    const email = authEmailInput.value.trim();
+    const password = authPasswordInput.value;
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    if (error) {
+        setAuthMessage(error.message, true);
+        return;
+    }
+
+    setUserUI(data.session);
+    setAuthMessage("Sesion iniciada correctamente.");
+    authForm.reset();
+    window.setTimeout(closeAuthModal, 400);
+}
+
+async function signOutCurrentUser() {
+    if (!supabaseClient) {
+        return;
+    }
+
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+        setAuthMessage(error.message, true);
+        return;
+    }
+
+    setUserUI(null);
+    setAuthMessage("");
+}
+
+function setAuthMode(mode) {
+    authMode = mode;
+    signUpButton.style.opacity = mode === "signup" ? "1" : "0.82";
+    signInButton.style.opacity = mode === "signin" ? "1" : "0.82";
+}
+
+function buildBookingRows({ flightsToBook, passengers, currency, totalUSD }) {
+    const amountPerSegmentUSD = totalUSD / flightsToBook.length;
+    return flightsToBook.map((flight) => ({
+        user_id: state.session.user.id,
+        flight_id: flight.id,
+        passengers,
+        currency,
+        total_amount: currency === "USD" ? amountPerSegmentUSD : amountPerSegmentUSD * EXCHANGE_RATES[currency],
+        status: "pending"
+    }));
+}
+
+async function saveBookingsToSupabase(payload) {
+    if (!supabaseClient || !state.session?.user?.id) {
+        throw new Error("Debes iniciar sesion para guardar la reserva en bookings.");
+    }
+
+    const { data, error } = await supabaseClient
+        .from("bookings")
+        .insert(payload)
+        .select("id, flight_id, total_amount, currency, status");
+
+    if (error) {
+        throw error;
+    }
+
+    return data || [];
+}
+
+async function handleBookingSubmit(event) {
     event.preventDefault();
 
     const tripType = document.querySelector("input[name='trip-type']:checked").value;
@@ -139,6 +354,17 @@ function handleBookingSubmit(event) {
         return;
     }
 
+    const outboundFlight = findMatchingFlight(origin, destination, depart);
+    if (state.flights.length > 0 && !outboundFlight) {
+        bookingSummary.innerHTML = "<strong>Error:</strong> no hay un vuelo cargado en Supabase para esa fecha y ruta.";
+        return;
+    }
+
+    const flightsToBook = [];
+    if (outboundFlight) {
+        flightsToBook.push(outboundFlight);
+    }
+
     if (tripType === "roundtrip") {
         if (!returnDate) {
             bookingSummary.innerHTML = "<strong>Error:</strong> selecciona fecha de vuelta.";
@@ -148,6 +374,15 @@ function handleBookingSubmit(event) {
             bookingSummary.innerHTML = "<strong>Error:</strong> la fecha de vuelta no puede ser menor que la fecha de ida.";
             return;
         }
+
+        if (state.flights.length > 0) {
+            const returnFlight = findMatchingFlight(destination, origin, returnDate);
+            if (!returnFlight) {
+                bookingSummary.innerHTML = "<strong>Error:</strong> no hay vuelo de regreso cargado en Supabase para esa fecha.";
+                return;
+            }
+            flightsToBook.push(returnFlight);
+        }
     }
 
     const oneWayUSD = getRoutePriceUSD(origin, destination) * passengers;
@@ -155,14 +390,41 @@ function handleBookingSubmit(event) {
     const totalUSD = oneWayUSD * roundFactor;
     const totalCurrency = totalUSD * EXCHANGE_RATES[currency];
 
-    bookingSummary.innerHTML = `
-        <strong>Reserva generada (demo)</strong><br>
-        Ruta: ${origin} -> ${destination}${tripType === "roundtrip" ? " (ida y vuelta)" : " (solo ida)"}<br>
-        Fecha ida: ${depart}${tripType === "roundtrip" ? `<br>Fecha vuelta: ${returnDate}` : ""}<br>
-        Pasajeros: ${passengers}<br>
-        Total: ${formatCurrency(totalCurrency, currency)}<br>
-        Referencia: ${formatCurrency(totalUSD, "USD")} | ${formatCurrency(totalUSD * EXCHANGE_RATES.VES, "VES")} | ${formatCurrency(totalUSD * EXCHANGE_RATES.CLP, "CLP")}
-    `;
+    if (!state.session?.user?.id) {
+        bookingSummary.innerHTML = `
+            <strong>Reserva validada</strong><br>
+            Ruta: ${origin} -> ${destination}${tripType === "roundtrip" ? " (ida y vuelta)" : " (solo ida)"}<br>
+            Fecha ida: ${depart}${tripType === "roundtrip" ? `<br>Fecha vuelta: ${returnDate}` : ""}<br>
+            Pasajeros: ${passengers}<br>
+            Total: ${formatCurrency(totalCurrency, currency)}<br>
+            Inicia sesion para guardar esta reserva en la tabla bookings.
+        `;
+        openAuthModal();
+        setAuthMessage("Crea tu cuenta o inicia sesion para continuar.");
+        return;
+    }
+
+    try {
+        const insertedBookings = await saveBookingsToSupabase(
+            buildBookingRows({
+                flightsToBook: flightsToBook.length > 0 ? flightsToBook : [{ id: null }],
+                passengers,
+                currency,
+                totalUSD
+            })
+        );
+
+        bookingSummary.innerHTML = `
+            <strong>Reserva generada</strong><br>
+            Ruta: ${origin} -> ${destination}${tripType === "roundtrip" ? " (ida y vuelta)" : " (solo ida)"}<br>
+            Fecha ida: ${depart}${tripType === "roundtrip" ? `<br>Fecha vuelta: ${returnDate}` : ""}<br>
+            Pasajeros: ${passengers}<br>
+            Total: ${formatCurrency(totalCurrency, currency)}<br>
+            Reservas guardadas en Supabase: ${insertedBookings.length}
+        `;
+    } catch (error) {
+        bookingSummary.innerHTML = `<strong>Error:</strong> no se pudo guardar la reserva en bookings. ${error.message}`;
+    }
 }
 
 function handlePaymentSubmit(event) {
@@ -199,32 +461,31 @@ function loadEditableText() {
     });
 }
 
-function persistEditableText() {
-    const data = {};
-    document.querySelectorAll(".editable-text").forEach((element) => {
-        data[element.dataset.key] = element.textContent.trim();
+function setupAuthUI() {
+    authButton.addEventListener("click", () => {
+        if (state.session?.user?.id) {
+            signOutCurrentUser();
+            return;
+        }
+
+        setAuthMode("signin");
+        openAuthModal();
     });
-    localStorage.setItem("siteEditableText", JSON.stringify(data));
-}
 
-function setEditMode(enabled) {
-    state.editMode = enabled;
-    toggleEditButton.textContent = `Editar textos: ${enabled ? "ON" : "OFF"}`;
-
-    document.querySelectorAll(".editable-text").forEach((element) => {
-        element.contentEditable = String(enabled);
-        element.classList.toggle("editable", enabled);
+    registerButton.addEventListener("click", () => {
+        setAuthMode("signup");
+        openAuthModal();
     });
-}
 
-function setupEditing() {
-    toggleEditButton.addEventListener("click", () => {
-        const nextMode = !state.editMode;
-        setEditMode(nextMode);
-        if (!nextMode) {
-            persistEditableText();
+    closeAuthButton.addEventListener("click", closeAuthModal);
+    authModal.addEventListener("click", (event) => {
+        if (event.target.dataset.closeAuth === "true") {
+            closeAuthModal();
         }
     });
+
+    signUpButton.addEventListener("click", signUpWithEmail);
+    signInButton.addEventListener("click", signInWithEmail);
 }
 
 function setupTripTypeToggle() {
@@ -276,7 +537,7 @@ function initDates() {
     departInput.value = today;
 }
 
-function init() {
+async function init() {
     renderServices();
     renderServiceSelect();
     renderAirportOptions();
@@ -284,8 +545,10 @@ function init() {
     setupTripTypeToggle();
     setupBannerSlider();
     loadEditableText();
-    setEditMode(false);
-    setupEditing();
+    setupAuthUI();
+    setAuthMode("signin");
+    await loadCurrentSession();
+    await loadFlightsFromSupabase();
 
     bookingForm.addEventListener("submit", handleBookingSubmit);
     paymentForm.addEventListener("submit", handlePaymentSubmit);

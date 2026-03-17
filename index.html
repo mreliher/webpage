@@ -23,8 +23,9 @@
                 <a href="#contacto">Contacto</a>
             </nav>
             <div class="top-actions">
-                <button class="login-btn" type="button">Iniciar sesion</button>
-                <button id="toggle-edit" class="edit-btn" type="button">Editar textos: OFF</button>
+                <span id="auth-status" class="auth-status">Sin sesion</span>
+                <button id="auth-btn" class="login-btn" type="button">Iniciar sesion</button>
+                <button id="register-btn" class="register-btn" type="button">Registrarse</button>
             </div>
         </div>
     </header>
@@ -153,6 +154,32 @@
         </section>
     </main>
 
+    <div id="auth-modal" class="auth-modal hidden" aria-hidden="true">
+        <div class="auth-backdrop" data-close-auth="true"></div>
+        <div class="auth-panel">
+            <button id="close-auth" class="close-auth" type="button" aria-label="Cerrar">&times;</button>
+            <h2>Acceso de usuarios</h2>
+            <p class="auth-copy">Usa tu correo para crear cuenta o iniciar sesion y poder guardar reservas en Supabase.</p>
+            <form id="auth-form" class="auth-form">
+                <label>
+                    Correo
+                    <input id="auth-email" type="email" required placeholder="tucorreo@dominio.com">
+                </label>
+                <label>
+                    Contrasena
+                    <input id="auth-password" type="password" required minlength="6" placeholder="Minimo 6 caracteres">
+                </label>
+                <div class="auth-actions">
+                    <button id="signup-btn" class="pay-btn" type="button">Crear cuenta</button>
+                    <button id="signin-btn" class="search-btn" type="button">Iniciar sesion</button>
+                </div>
+            </form>
+            <div id="auth-message" class="auth-message"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
