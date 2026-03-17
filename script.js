@@ -91,6 +91,7 @@ const returnInput = document.getElementById("booking-return");
 const passengerSelect = document.getElementById("booking-passengers");
 const bookingCurrency = document.getElementById("booking-currency");
 let authMode = "signin";
+const OPERATING_AIRLINE = "Aeroturpial";
 
 function formatCurrency(amount, currency) {
     const locales = {
@@ -103,6 +104,18 @@ function formatCurrency(amount, currency) {
         style: "currency",
         currency
     }).format(amount);
+}
+
+function buildPnrFromBooking(booking) {
+    if (booking.pnr) {
+        return String(booking.pnr).toUpperCase().slice(0, 6);
+    }
+
+    const source = String(booking.id || booking.flight_id || "AER000")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toUpperCase();
+
+    return (source + "AER123").slice(0, 6);
 }
 
 function renderServices() {
@@ -202,6 +215,7 @@ function renderMyBookings(bookings) {
 
     myBookingsList.innerHTML = bookings.map((booking) => {
         const flight = booking.flights || {};
+        const pnr = buildPnrFromBooking(booking);
         const route = flight.origin && flight.destination
             ? `${flight.origin} -> ${flight.destination}`
             : `Vuelo ${booking.flight_id}`;
@@ -213,7 +227,8 @@ function renderMyBookings(bookings) {
             <article class="booking-item-card">
                 <h3>${route}</h3>
                 <div class="booking-meta">
-                    Reserva: ${booking.id}<br>
+                    PNR: ${pnr}<br>
+                    Aerolinea operadora: ${OPERATING_AIRLINE}<br>
                     Fecha salida: ${departure}<br>
                     Pasajeros: ${booking.passengers}<br>
                     Total: ${formatCurrency(Number(booking.total_amount), booking.currency)}
@@ -282,7 +297,7 @@ async function loadMyBookings() {
 
     const { data, error } = await supabaseClient
         .from("bookings")
-        .select("id, flight_id, passengers, currency, total_amount, status, flights:flight_id(origin, destination, departure_at)")
+        .select("id, pnr, flight_id, passengers, currency, total_amount, status, flights:flight_id(origin, destination, departure_at)")
         .eq("user_id", state.session.user.id)
         .order("created_at", { ascending: false });
 
@@ -472,10 +487,12 @@ async function handleBookingSubmit(event) {
 
         bookingSummary.innerHTML = `
             <strong>Reserva generada</strong><br>
+            Aerolinea operadora: ${OPERATING_AIRLINE}<br>
             Ruta: ${origin} -> ${destination}${tripType === "roundtrip" ? " (ida y vuelta)" : " (solo ida)"}<br>
             Fecha ida: ${depart}${tripType === "roundtrip" ? `<br>Fecha vuelta: ${returnDate}` : ""}<br>
             Pasajeros: ${passengers}<br>
             Total: ${formatCurrency(totalCurrency, currency)}<br>
+            PNR generado: ${buildPnrFromBooking(insertedBookings[0] || {})}<br>
             Reservas guardadas en Supabase: ${insertedBookings.length}
         `;
         await loadMyBookings();
