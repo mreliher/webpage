@@ -1,7 +1,18 @@
-const supabaseClient = window.supabase.createClient(
-  window.APP_CONFIG.SUPABASE_URL,
-  window.APP_CONFIG.SUPABASE_ANON_KEY
+const appConfig = window.APP_CONFIG || {
+    SUPABASE_URL: "",
+    SUPABASE_ANON_KEY: ""
+};
+
+const hasSupabaseConfig = Boolean(
+    window.supabase &&
+    appConfig.SUPABASE_URL &&
+    appConfig.SUPABASE_ANON_KEY
 );
+
+const supabaseClient = hasSupabaseConfig
+    ? window.supabase.createClient(appConfig.SUPABASE_URL, appConfig.SUPABASE_ANON_KEY)
+    : null;
+
 const SERVICES = [
     {
         id: "fbo-vip",
