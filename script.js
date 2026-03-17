@@ -190,6 +190,10 @@ function getGatewayOptions(currency) {
     return PAYMENT_GATEWAYS[currency] || [];
 }
 
+function isStripeGateway(gateway) {
+    return gateway?.provider === "stripe" || gateway?.provider === "stripe_ach";
+}
+
 function renderServices() {
     servicesGrid.innerHTML = SERVICES.map((service) => `
         <article class="service-card">
@@ -564,6 +568,31 @@ async function createPaymentAttempt(booking, gateway) {
     return data;
 }
 
+async function createStripeCheckoutSession(booking, gateway) {
+    if (!state.session?.access_token) {
+        throw new Error("No hay una sesion valida para iniciar Stripe.");
+    }
+
+    const response = await fetch("/api/create-stripe-checkout", {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${state.session.access_token}`
+        },
+        body: JSON.stringify({
+            bookingId: booking.id,
+            gatewayId: gateway.id
+        })
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error(payload.error || "No se pudo crear la sesion de Stripe.");
+    }
+
+    return payload;
+}
+
 async function handleCheckoutConfirm() {
     if (!state.checkoutBookingId) {
         setCheckoutMessage("Selecciona una reserva valida.", true);
@@ -583,11 +612,18 @@ async function handleCheckoutConfirm() {
     }
 
     checkoutConfirmButton.disabled = true;
-    setCheckoutMessage("Registrando intento de pago en Supabase...");
+    setCheckoutMessage(isStripeGateway(gateway) ? "Creando Checkout de Stripe..." : "Registrando intento de pago en Supabase...");
 
     try {
+        if (isStripeGateway(gateway)) {
+            const session = await createStripeCheckoutSession(booking, gateway);
+            setCheckoutMessage("Redirigiendo a Stripe Checkout...");
+            window.location.href = session.url;
+            return;
+        }
+
         const payment = await createPaymentAttempt(booking, gateway);
-        setCheckoutMessage(`Intento de pago creado. Referencia ${payment.reference}. Pasarela objetivo: ${gateway.label}. Para cobro real, el siguiente paso es redirigir desde backend y confirmar el resultado por webhook.`);
+        setCheckoutMessage(`Intento de pago creado. Referencia ${payment.reference}. Pasarela objetivo: ${gateway.label}. Para cobro real, el siguiente paso es integrar el backend del proveedor y su confirmacion.`);
     } catch (error) {
         setCheckoutMessage(`No se pudo registrar el pago. ${error.message}`, true);
     } finally {
@@ -841,6 +877,27 @@ function initDates() {
     departInput.value = today;
 }
 
+function handleCheckoutReturnState() {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutState = params.get("checkout");
+    const bookingId = params.get("booking_id");
+
+    if (!checkoutState) {
+        return;
+    }
+
+    if (checkoutState === "success") {
+        bookingSummary.innerHTML = `<strong>Pago iniciado correctamente</strong><br>La reserva ${bookingId || ""} volvio desde Stripe. Si el webhook ya llego, el estado cambiara a confirmed.`;
+    }
+
+    if (checkoutState === "cancel") {
+        bookingSummary.innerHTML = `<strong>Pago cancelado</strong><br>La reserva ${bookingId || ""} sigue pendiente hasta que completes el cobro.`;
+    }
+
+    const cleanUrl = `${window.location.pathname}${window.location.hash || ""}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+
 async function init() {
     renderServices();
     renderServiceSelect();
@@ -852,6 +909,7 @@ async function init() {
     setupAuthUI();
     setupCheckoutUI();
     setAuthMode("signin");
+    handleCheckoutReturnState();
     await loadCurrentSession();
     await loadFlightsFromSupabase();
     await loadMyBookings();

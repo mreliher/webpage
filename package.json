@@ -1,0 +1,9 @@
+{
+  "name": "aeroparaguana-webpage",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "stripe": "^18.6.0"
+  }
+}
