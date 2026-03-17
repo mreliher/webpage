@@ -585,7 +585,15 @@ async function createStripeCheckoutSession(booking, gateway) {
         })
     });
 
-    const payload = await response.json();
+    const rawText = await response.text();
+    let payload = {};
+
+    try {
+        payload = rawText ? JSON.parse(rawText) : {};
+    } catch (error) {
+        throw new Error(rawText || "La API de Stripe devolvio una respuesta invalida.");
+    }
+
     if (!response.ok) {
         throw new Error(payload.error || "No se pudo crear la sesion de Stripe.");
     }

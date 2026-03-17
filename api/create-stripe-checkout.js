@@ -1,13 +1,6 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-function json(response, status = 200) {
-    return new Response(JSON.stringify(response), {
-        status,
-        headers: { "content-type": "application/json" }
-    });
-}
-
 function getStripePaymentMethods(gatewayId) {
     if (gatewayId === "stripe_ach") {
         return ["us_bank_account"];
@@ -16,9 +9,9 @@ function getStripePaymentMethods(gatewayId) {
     return ["card"];
 }
 
-export default async function handler(request) {
-    if (request.method !== "POST") {
-        return json({ error: "Method not allowed" }, 405);
+export default async function handler(req, res) {
+    if (req.method !== "POST") {
+        return res.status(405).json({ error: "Method not allowed" });
     }
 
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -27,24 +20,24 @@ export default async function handler(request) {
     const siteUrl = process.env.SITE_URL;
 
     if (!stripeSecretKey || !supabaseUrl || !supabaseServiceRoleKey || !siteUrl) {
-        return json({ error: "Missing Stripe or Supabase server configuration." }, 500);
+        return res.status(500).json({ error: "Missing Stripe or Supabase server configuration." });
     }
 
-    const authHeader = request.headers.get("authorization") || "";
+    const authHeader = req.headers.authorization || "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     if (!token) {
-        return json({ error: "Missing auth token." }, 401);
+        return res.status(401).json({ error: "Missing auth token." });
     }
 
-    const { bookingId, gatewayId } = await request.json();
+    const { bookingId, gatewayId } = req.body || {};
     if (!bookingId || !gatewayId) {
-        return json({ error: "bookingId and gatewayId are required." }, 400);
+        return res.status(400).json({ error: "bookingId and gatewayId are required." });
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData?.user?.id) {
-        return json({ error: "Invalid session." }, 401);
+        return res.status(401).json({ error: "Invalid session." });
     }
 
     const { data: booking, error: bookingError } = await supabase
@@ -55,11 +48,11 @@ export default async function handler(request) {
         .single();
 
     if (bookingError || !booking) {
-        return json({ error: "Booking not found." }, 404);
+        return res.status(404).json({ error: "Booking not found." });
     }
 
     if (booking.currency !== "USD") {
-        return json({ error: "Stripe is enabled only for USD bookings." }, 400);
+        return res.status(400).json({ error: "Stripe is enabled only for USD bookings." });
     }
 
     const stripe = new Stripe(stripeSecretKey);
@@ -84,7 +77,7 @@ export default async function handler(request) {
         .single();
 
     if (paymentError || !payment) {
-        return json({ error: paymentError?.message || "Could not create payment record." }, 500);
+        return res.status(500).json({ error: paymentError?.message || "Could not create payment record." });
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -130,7 +123,7 @@ export default async function handler(request) {
         })
         .eq("id", payment.id);
 
-    return json({
+    return res.status(200).json({
         url: session.url,
         sessionId: session.id,
         paymentId: payment.id

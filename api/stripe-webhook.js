@@ -1,17 +1,6 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-function json(response, status = 200) {
-    return new Response(JSON.stringify(response), {
-        status,
-        headers: { "content-type": "application/json" }
-    });
-}
-
-async function readRawBody(request) {
-    return Buffer.from(await request.arrayBuffer());
-}
-
 async function markPaymentAndBooking(supabase, paymentId, bookingId, paymentStatus, bookingStatus, reference) {
     if (paymentId) {
         await supabase
@@ -31,9 +20,23 @@ async function markPaymentAndBooking(supabase, paymentId, bookingId, paymentStat
     }
 }
 
-export default async function handler(request) {
-    if (request.method !== "POST") {
-        return json({ error: "Method not allowed" }, 405);
+export const config = {
+    api: {
+        bodyParser: false
+    }
+};
+
+async function readRawBody(req) {
+    const chunks = [];
+    for await (const chunk of req) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+}
+
+export default async function handler(req, res) {
+    if (req.method !== "POST") {
+        return res.status(405).json({ error: "Method not allowed" });
     }
 
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -42,24 +45,24 @@ export default async function handler(request) {
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!stripeSecretKey || !stripeWebhookSecret || !supabaseUrl || !supabaseServiceRoleKey) {
-        return json({ error: "Missing Stripe webhook configuration." }, 500);
+        return res.status(500).json({ error: "Missing Stripe webhook configuration." });
     }
 
     const stripe = new Stripe(stripeSecretKey);
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-    const signature = request.headers.get("stripe-signature");
+    const signature = req.headers["stripe-signature"];
 
     if (!signature) {
-        return json({ error: "Missing Stripe signature." }, 400);
+        return res.status(400).json({ error: "Missing Stripe signature." });
     }
 
     let event;
 
     try {
-        const rawBody = await readRawBody(request);
+        const rawBody = await readRawBody(req);
         event = stripe.webhooks.constructEvent(rawBody, signature, stripeWebhookSecret);
     } catch (error) {
-        return json({ error: `Webhook signature verification failed. ${error.message}` }, 400);
+        return res.status(400).json({ error: `Webhook signature verification failed. ${error.message}` });
     }
 
     const session = event.data.object;
@@ -91,5 +94,5 @@ export default async function handler(request) {
             break;
     }
 
-    return json({ received: true });
+    return res.status(200).json({ received: true });
 }
