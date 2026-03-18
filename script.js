@@ -102,22 +102,13 @@ const PAYMENT_GATEWAYS = {
     ],
     VES: [
         {
-            id: "mercantil",
-            provider: "mercantil",
-            label: "Mercantil",
-            description: "Boton de pago local para recaudo en Venezuela.",
-            badge: "M",
-            brandClass: "brand-mercantil",
-            meta: "Banco Mercantil"
-        },
-        {
-            id: "banesco",
-            provider: "banesco",
-            label: "BanescoPagos",
-            description: "Alternativa local para cobro en bolivares.",
-            badge: "B",
-            brandClass: "brand-banesco",
-            meta: "Banco Banesco"
+            id: "transfer_whatsapp",
+            provider: "transfer_whatsapp",
+            label: "Transferencia bancaria",
+            description: "Realiza la transferencia y envia el comprobante por WhatsApp para validar tu reserva.",
+            badge: "Bs",
+            brandClass: "brand-transfer",
+            meta: "Comprobante por WhatsApp"
         }
     ]
 };
@@ -162,8 +153,10 @@ const checkoutGatewayList = document.getElementById("checkout-gateway-list");
 const checkoutMessage = document.getElementById("checkout-message");
 const checkoutConfirmButton = document.getElementById("checkout-confirm");
 const closeCheckoutButton = document.getElementById("close-checkout");
+const checkoutExtraAction = document.getElementById("checkout-extra-action");
 let authMode = "signin";
 const OPERATING_AIRLINE = "Aeroturpial";
+const WHATSAPP_NUMBER = "584240000000";
 
 function formatCurrency(amount, currency) {
     const locales = {
@@ -224,6 +217,10 @@ function isPayPalGateway(gateway) {
 
 function isWebpayGateway(gateway) {
     return gateway?.provider === "webpay_plus";
+}
+
+function isTransferGateway(gateway) {
+    return gateway?.provider === "transfer_whatsapp";
 }
 
 function renderServices() {
@@ -521,6 +518,10 @@ function setCheckoutMessage(message, isError = false) {
     checkoutMessage.style.color = isError ? "#c5334d" : "#315578";
 }
 
+function clearCheckoutExtraAction() {
+    checkoutExtraAction.innerHTML = "";
+}
+
 function closeCheckoutModal() {
     checkoutModal.classList.add("hidden");
     checkoutModal.setAttribute("aria-hidden", "true");
@@ -529,6 +530,7 @@ function closeCheckoutModal() {
     checkoutBookingInfo.innerHTML = "";
     checkoutGatewayList.innerHTML = "";
     setCheckoutMessage("");
+    clearCheckoutExtraAction();
     document.body.classList.remove("modal-open");
 }
 
@@ -580,6 +582,7 @@ function openCheckoutModal(bookingId) {
 
     renderCheckoutGateways(booking);
     setCheckoutMessage("Selecciona una pasarela y registra el intento de pago.");
+    clearCheckoutExtraAction();
     checkoutModal.classList.remove("hidden");
     checkoutModal.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
@@ -710,6 +713,22 @@ async function createWebpayTransaction(booking, gateway) {
     return payload;
 }
 
+function buildWhatsAppUrl(booking, payment) {
+    const route = booking.flights?.origin && booking.flights?.destination
+        ? `${booking.flights.origin} -> ${booking.flights.destination}`
+        : booking.flight_id;
+    const message = [
+        "Hola, envio comprobante de transferencia para validar una reserva.",
+        `PNR: ${buildPnrFromBooking(booking)}`,
+        `Ruta: ${route}`,
+        `Monto: ${formatCurrency(Number(booking.total_amount), booking.currency)}`,
+        `Referencia interna: ${payment.reference}`,
+        "Adjunto comprobante de pago."
+    ].join("\n");
+
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
 async function handleCheckoutConfirm() {
     if (!state.checkoutBookingId) {
         setCheckoutMessage("Selecciona una reserva valida.", true);
@@ -736,6 +755,8 @@ async function handleCheckoutConfirm() {
                 ? "Creando orden de PayPal..."
                 : isWebpayGateway(gateway)
                     ? "Creando transaccion de Webpay..."
+                    : isTransferGateway(gateway)
+                        ? "Registrando transferencia y preparando WhatsApp..."
                 : "Registrando intento de pago en Supabase..."
     );
 
@@ -770,6 +791,22 @@ async function handleCheckoutConfirm() {
 
             document.body.appendChild(form);
             form.submit();
+            return;
+        }
+
+        if (isTransferGateway(gateway)) {
+            const payment = await createPaymentAttempt(booking, gateway);
+            await supabaseClient
+                .from("payments")
+                .update({ status: "awaiting_proof" })
+                .eq("id", payment.id);
+
+            setCheckoutMessage(`Transferencia registrada. Referencia ${payment.reference}. Envia ahora el comprobante por WhatsApp para validar la reserva.`);
+            checkoutExtraAction.innerHTML = `
+                <a class="whatsapp-proof-btn" href="${buildWhatsAppUrl(booking, payment)}" target="_blank" rel="noreferrer">
+                    Enviar comprobante por WhatsApp
+                </a>
+            `;
             return;
         }
 

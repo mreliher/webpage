@@ -146,8 +146,8 @@
                 </article>
                 <article class="gateway-card">
                     <h3>VES</h3>
-                    <p><strong>Pasarela objetivo:</strong> Mercantil o Banesco.</p>
-                    <p>En Venezuela normalmente se integra boton de pago, no banco por banco.</p>
+                    <p><strong>Flujo objetivo:</strong> Transferencia + envio de comprobante por WhatsApp.</p>
+                    <p>Operacion manual asistida para validar pagos y conciliar reservas en bolivares.</p>
                 </article>
             </div>
             <form id="payment-form" class="payment-form">
@@ -220,6 +220,7 @@
                 <button id="checkout-confirm" class="search-btn" type="button">Registrar intento de pago</button>
             </div>
             <div id="checkout-message" class="auth-message"></div>
+            <div id="checkout-extra-action"></div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
