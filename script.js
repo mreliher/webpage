@@ -48,13 +48,10 @@ const supabaseClient = hasSupabaseConfig
 
 const AIRPORTS = [
     { code: "LSP", city: "Las Piedras" },
-    { code: "CCS", city: "Caracas" },
     { code: "CUR", city: "Curazao" }
 ];
 
 const ROUTE_PRICES_USD = {
-    "LSP-CCS": 95,
-    "CCS-LSP": 95,
     "LSP-CUR": 145,
     "CUR-LSP": 145
 };
@@ -841,7 +838,7 @@ async function handleBookingSubmit(event) {
     }
 
     if (!validateRoute(origin, destination)) {
-        bookingSummary.innerHTML = "<strong>Error:</strong> ruta no disponible. Solo: Las Piedras-Caracas y Las Piedras-Curazao (ida y vuelta).";
+        bookingSummary.innerHTML = "<strong>Error:</strong> ruta no disponible. Actualmente solo esta activa Las Piedras-Curazao (ida y vuelta). Aruba estara disponible proximamente.";
         return;
     }
 
