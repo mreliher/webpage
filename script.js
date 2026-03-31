@@ -300,12 +300,14 @@ function setUserUI(session) {
 
     if (state.session?.user?.email) {
         authStatus.textContent = state.session.user.email;
+        authStatus.classList.remove("is-empty");
         authButton.textContent = "Cerrar sesion";
         registerButton.style.display = "none";
         return;
     }
 
-    authStatus.textContent = "Sin sesion";
+    authStatus.textContent = "";
+    authStatus.classList.add("is-empty");
     authButton.textContent = "Iniciar sesion";
     registerButton.style.display = "inline-flex";
 }
@@ -951,9 +953,25 @@ function handlePaymentSubmit(event) {
 
 function loadEditableText() {
     const saved = JSON.parse(localStorage.getItem("siteEditableText") || "{}");
+    const nextSaved = { ...saved };
+
+    if (!nextSaved.heroTitle || /aeroparaguana\s*c\.a/i.test(nextSaved.heroTitle)) {
+        nextSaved.heroTitle = "Reserva tus boletos con Aeroparaguana";
+    }
+
+    if (!nextSaved.heroDesc || /caracas|ccs/i.test(nextSaved.heroDesc)) {
+        nextSaved.heroDesc = "Rutas activas: Curazao - Las Piedras, ida y vuelta.";
+    }
+
+    if (!nextSaved.heroTag) {
+        nextSaved.heroTag = "Vuelos nacionales e internacionales desde Paraguana";
+    }
+
+    localStorage.setItem("siteEditableText", JSON.stringify(nextSaved));
+
     document.querySelectorAll(".editable-text").forEach((element) => {
-        if (saved[element.dataset.key]) {
-            element.textContent = saved[element.dataset.key];
+        if (nextSaved[element.dataset.key]) {
+            element.textContent = nextSaved[element.dataset.key];
         }
     });
 }
