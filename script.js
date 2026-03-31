@@ -51,6 +51,8 @@ const AIRPORTS = [
     { code: "CUR", city: "Curazao" }
 ];
 
+const ACTIVE_ROUTE_CODES = new Set(["LSP", "CUR"]);
+
 const ROUTE_PRICES_USD = {
     "LSP-CUR": 145,
     "CUR-LSP": 145
@@ -240,10 +242,12 @@ function renderAirportOptions() {
     const sourceAirports = state.flights.length > 0
         ? Array.from(
             new Map(
-                state.flights.flatMap((flight) => [
-                    [flight.origin, flight.origin],
-                    [flight.destination, flight.destination]
-                ])
+                state.flights
+                    .filter((flight) => ACTIVE_ROUTE_CODES.has(flight.origin) && ACTIVE_ROUTE_CODES.has(flight.destination))
+                    .flatMap((flight) => [
+                        [flight.origin, flight.origin],
+                        [flight.destination, flight.destination]
+                    ])
             ).keys()
         ).map((code) => AIRPORTS.find((airport) => airport.code === code) || { code, city: code })
         : AIRPORTS;
@@ -371,7 +375,7 @@ async function loadFlightsFromSupabase() {
         return;
     }
 
-    state.flights = data || [];
+    state.flights = (data || []).filter((flight) => ACTIVE_ROUTE_CODES.has(flight.origin) && ACTIVE_ROUTE_CODES.has(flight.destination));
     renderAirportOptions();
 
     if (state.flights.length === 0) {
